@@ -1,0 +1,15 @@
+includes:
+	- phpstan-baseline.neon
+
+parameters:
+    bootstrapFiles:
+        - phpunit.bootstrap.php
+    excludePaths:
+        - %currentWorkingDirectory%/tests/assets
+    level: 8
+    inferPrivatePropertyTypeFromConstructor: true
+    paths:
+        - bin/
+        - src/
+        - tests/
+    tmpDir: data

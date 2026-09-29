@@ -1,0 +1,100 @@
+name: "Release Phar"
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "**"
+
+env:
+  COMPOSER_VERSION: "^2.1"
+  PHP_EXTENSIONS: "mbstring, ds"
+  PHP_INI_VALUES: "memory_limit=-1, phar.readonly=0"
+
+jobs:
+  release:
+    name: "Release"
+
+    runs-on: "blacksmith-4vcpu-ubuntu-2204"
+
+    strategy:
+      matrix:
+        php-version:
+          - "8.1"
+
+    env:
+      COMPOSER_UNUSED_PHAR: "build/composer-unused.phar"
+      COMPOSER_UNUSED_PHAR_SIGNATURE: "build/composer-unused.phar.asc"
+
+    steps:
+      - name: "Checkout"
+        uses: "actions/checkout@v6"
+
+      - name: "Install PHP with extensions"
+        uses: "shivammathur/setup-php@v2"
+        with:
+          coverage: "none"
+          tools: "composer:v2"
+          extensions: "${{ env.PHP_EXTENSIONS }}"
+          ini-values: "${{ env.PHP_INI_VALUES }}"
+          php-version: "${{ matrix.php-version }}"
+
+      - name: "Remove dev dependencies"
+        run: "composer install --no-progress"
+
+      - name: "Fetch latest version tag"
+        run: "echo `git describe --abbrev=0 --tags` > .version"
+
+      - name: "Validate configuration for humbug/box"
+        run: "vendor/bin/box validate box.json"
+
+      - name: "Compile composer-unused.phar with humbug/box"
+        run: "php -d error_reporting='E_ALL & ~E_DEPRECATED' vendor/bin/box compile --config=box.json --no-parallel"
+
+      - name: "Show info about composer-unused.phar with humbug/box"
+        continue-on-error: true
+        run: "vendor/bin/box info ${{ env.COMPOSER_UNUSED_PHAR }}"
+
+      - name: "Import GPG key"
+        id: "import_gpg"
+        uses: "crazy-max/ghaction-import-gpg@v6"
+        with:
+          gpg_private_key: "${{ secrets.GPG_PRIVATE_KEY }}"
+          passphrase: "${{ secrets.GPG_PASSPHRASE }}"
+
+      - name: "Sign composer-unused.phar"
+        run: "gpg --default-key ${{ steps.import_gpg.outputs.keyid }} --sign ${{ env.COMPOSER_UNUSED_PHAR }}"
+
+      - name: "Detach signature"
+        run: "gpg --default-key ${{ steps.import_gpg.outputs.keyid }} --output ${{ env.COMPOSER_UNUSED_PHAR_SIGNATURE }} --detach-sig ${{ env.COMPOSER_UNUSED_PHAR }}"
+
+      - name: "Verify signature"
+        run: "gpg --verify ${{ env.COMPOSER_UNUSED_PHAR_SIGNATURE }} ${{ env.COMPOSER_UNUSED_PHAR }}"
+
+      - name: "Get release"
+        id: "get-release"
+        uses: "bruceadams/get-release@v1.3.2"
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: "Upload composer-unused.phar"
+        if: "always()"
+        uses: "actions/upload-release-asset@v1.0.2"
+        env:
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+        with:
+          asset_content_type: "text/plain"
+          asset_name: "composer-unused.phar"
+          asset_path: "${{ env.COMPOSER_UNUSED_PHAR }}"
+          upload_url: "${{ steps.get-release.outputs.upload_url }}"
+
+      - name: "Upload composer-unused.phar.asc"
+        if: "always()"
+        uses: "actions/upload-release-asset@v1.0.2"
+        env:
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+        with:
+          asset_content_type: "text/plain"
+          asset_name: "composer-unused.phar.asc"
+          asset_path: "${{ env.COMPOSER_UNUSED_PHAR_SIGNATURE }}"
+          upload_url: "${{ steps.get-release.outputs.upload_url }}"

@@ -1,0 +1,41 @@
+# https://docs.github.com/en/github/administering-a-repository/configuration-options-for-dependency-updates
+
+version: 2
+
+updates:
+  - commit-message:
+      include: "scope"
+      prefix: "composer"
+    directory: "/"
+    labels:
+      - "dependency"
+    open-pull-requests-limit: 10
+    package-ecosystem: "composer"
+    allow:
+      - dependency-name: "*"
+        dependency-type: "development"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    schedule:
+      interval: "weekly"
+    versioning-strategy: "increase"
+    groups:
+      dependencies:
+        patterns:
+          - "*"
+
+  - commit-message:
+      include: "scope"
+      prefix: "github-actions"
+    directory: "/"
+    labels:
+      - "dependency"
+    open-pull-requests-limit: 10
+    package-ecosystem: "github-actions"
+    schedule:
+      interval: "weekly"
+    groups:
+      dependencies:
+        patterns:
+          - "*"

@@ -1,0 +1,11 @@
+{
+  "name": "foo/bar",
+  "require": {
+      "lib/dependency": "*"
+  },
+  "autoload": {
+    "psr-4": {
+      "App\\": "./src/"
+    }
+  }
+}

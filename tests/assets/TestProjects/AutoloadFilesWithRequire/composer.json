@@ -1,0 +1,12 @@
+{
+    "name": "ns/lib",
+    "require": {
+        "php": "^8.1",
+        "ext-ds": "*"
+    },
+    "autoload": {
+        "files": [
+            "src/functions_include.php"
+        ]
+    }
+}
